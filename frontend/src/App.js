@@ -8,7 +8,7 @@ function App() {
   const [leetcode, setLeetcode] = useState(null);
   const [leetcodeLoading, setLeetcodeLoading] = useState(false);
 
-  const API_BASE = "http://34.235.192.78:4000";
+  const API_BASE = "/api";
 
   const getSuggestion = async () => {
     setLoading(true);
