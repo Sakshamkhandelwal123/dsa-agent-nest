@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useCallback, useEffect, useState, useRef } from "react";
 
 export default function App() {
   const [question, setQuestion] = useState("");
@@ -15,21 +15,7 @@ export default function App() {
     ? `?username=${encodeURIComponent(process.env.REACT_APP_LEETCODE_USERNAME)}`
     : "";
 
-  useEffect(() => {
-    fetchLeetcode();
-    fetchRecent();
-  }, []);
-
-  useEffect(() => {
-    if ((response || loadingAI) && responseRef.current) {
-      responseRef.current.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
-    }
-  }, [response, loadingAI]);
-
-  const fetchLeetcode = async () => {
+  const fetchLeetcode = useCallback(async () => {
     try {
       const res = await fetch(
         `${API_BASE}/leetcode/stats${leetcodeUserQuery}`
@@ -45,9 +31,9 @@ export default function App() {
     } catch (err) {
       console.error(err);
     }
-  };
+  }, [leetcodeUserQuery]);
 
-  const fetchRecent = async () => {
+  const fetchRecent = useCallback(async () => {
     try {
       const res = await fetch(
         `${API_BASE}/leetcode/recent${leetcodeUserQuery}`
@@ -63,7 +49,21 @@ export default function App() {
       console.error(err);
       setRecent([]);
     }
-  };
+  }, [leetcodeUserQuery]);
+
+  useEffect(() => {
+    fetchLeetcode();
+    fetchRecent();
+  }, [fetchLeetcode, fetchRecent]);
+
+  useEffect(() => {
+    if ((response || loadingAI) && responseRef.current) {
+      responseRef.current.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }
+  }, [response, loadingAI]);
 
   const getSuggestion = async () => {
     setLoadingSuggestion(true);
@@ -188,10 +188,12 @@ export default function App() {
                   Get a smart question based on your progress
                 </p>
                 <button
+                  type="button"
                   onClick={getSuggestion}
-                  className="mt-4 bg-slate-100 hover:bg-slate-200 px-4 py-2 rounded-xl text-sm"
+                  disabled={loadingSuggestion}
+                  className="mt-4 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed px-4 py-2 rounded-xl text-sm"
                 >
-                  Generate Suggestion
+                  {loadingSuggestion ? "Loading…" : "Generate Suggestion"}
                 </button>
               </div>
             )}
@@ -221,10 +223,12 @@ export default function App() {
                 </a>
 
                 <button
+                  type="button"
                   onClick={getSuggestion}
-                  className="mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-xl"
+                  disabled={loadingSuggestion}
+                  className="mt-4 w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white py-2 rounded-xl"
                 >
-                  Suggest Another
+                  {loadingSuggestion ? "Loading…" : "Suggest Another"}
                 </button>
               </div>
             )}
