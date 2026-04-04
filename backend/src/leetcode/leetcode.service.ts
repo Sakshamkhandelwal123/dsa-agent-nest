@@ -49,4 +49,25 @@ export class LeetcodeService {
     };
   }
 
+  async getRecentSubmissions(username: string) {
+    const response = await axios.post(
+      "https://leetcode.com/graphql",
+      {
+        query: `
+        query recentSubmissions($username: String!) {
+          recentSubmissionList(username: $username) {
+            title
+            titleSlug
+            timestamp
+          }
+        }
+        `,
+        variables: {
+          username
+        }
+      }
+    );
+  
+    return response.data.data.recentSubmissionList;
+  }
 }
