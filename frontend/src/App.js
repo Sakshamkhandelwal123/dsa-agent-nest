@@ -1,4 +1,70 @@
-import React, { useCallback, useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkBreaks from "remark-breaks";
+import remarkGfm from "remark-gfm";
+
+function codeChildText(children) {
+  if (typeof children === "string") return children;
+  if (Array.isArray(children)) {
+    return children
+      .map((c) => (typeof c === "string" ? c : ""))
+      .join("");
+  }
+  return "";
+}
+
+function normalizeBlockCodeChildren(children) {
+  const normalizeTabs = (value) => value.replace(/\t/g, "    ");
+
+  if (typeof children === "string") {
+    return normalizeTabs(children);
+  }
+  if (Array.isArray(children)) {
+    return children.map((c) => (typeof c === "string" ? normalizeTabs(c) : c));
+  }
+  return children;
+}
+
+/** Fenced blocks are `pre` + `code` (often `language-*`). Inline `code` has no newline. */
+const markdownComponents = {
+  pre({ children, ...props }) {
+    return (
+      <pre
+        className="my-4 overflow-x-auto rounded-lg !bg-slate-950 px-6 py-4 text-sm leading-relaxed !text-slate-100 shadow-inner"
+        style={{ tabSize: 4 }}
+        {...props}
+      >
+        {children}
+      </pre>
+    );
+  },
+  code({ className, children, ...props }) {
+    const text = codeChildText(children);
+    const isBlock =
+      /\blanguage-[\w-]+\b/.test(String(className || "")) ||
+      text.includes("\n");
+
+    if (!isBlock) {
+      return (
+        <code
+          className="rounded bg-slate-200/90 px-1.5 py-0.5 font-mono text-[0.9em] text-slate-800"
+          {...props}
+        >
+          {children}
+        </code>
+      );
+    }
+
+    return (
+      <code
+        className={`block whitespace-pre pl-1 font-mono !text-slate-100 ${className ?? ""}`}
+        {...props}
+      >
+        {normalizeBlockCodeChildren(children)}
+      </code>
+    );
+  },
+};
 
 export default function App() {
   const [question, setQuestion] = useState("");
@@ -11,50 +77,11 @@ export default function App() {
   const responseRef = useRef(null);
 
   const API_BASE = "/api";
-  const leetcodeUserQuery = process.env.REACT_APP_LEETCODE_USERNAME
-    ? `?username=${encodeURIComponent(process.env.REACT_APP_LEETCODE_USERNAME)}`
-    : "";
-
-  const fetchLeetcode = useCallback(async () => {
-    try {
-      const res = await fetch(
-        `${API_BASE}/leetcode/stats${leetcodeUserQuery}`
-      );
-      const data = await res.json();
-      if (!res.ok) {
-        console.error(data?.message ?? "Failed to load LeetCode stats");
-        return;
-      }
-      if (data && typeof data.totalSolved === "number") {
-        setLeetcode(data);
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  }, [leetcodeUserQuery]);
-
-  const fetchRecent = useCallback(async () => {
-    try {
-      const res = await fetch(
-        `${API_BASE}/leetcode/recent${leetcodeUserQuery}`
-      );
-      const data = await res.json();
-      if (!res.ok) {
-        console.error(data?.message ?? "Failed to load recent submissions");
-        setRecent([]);
-        return;
-      }
-      setRecent(Array.isArray(data) ? data : []);
-    } catch (err) {
-      console.error(err);
-      setRecent([]);
-    }
-  }, [leetcodeUserQuery]);
 
   useEffect(() => {
     fetchLeetcode();
     fetchRecent();
-  }, [fetchLeetcode, fetchRecent]);
+  }, []);
 
   useEffect(() => {
     if ((response || loadingAI) && responseRef.current) {
@@ -64,6 +91,26 @@ export default function App() {
       });
     }
   }, [response, loadingAI]);
+
+  const fetchLeetcode = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/leetcode/stats`);
+      const data = await res.json();
+      setLeetcode(data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const fetchRecent = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/leetcode/recent`);
+      const data = await res.json();
+      setRecent(data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   const getSuggestion = async () => {
     setLoadingSuggestion(true);
@@ -267,13 +314,24 @@ export default function App() {
               🧠 AI Response
             </h2>
 
-            <div className="bg-slate-50 p-4 rounded-xl whitespace-pre-wrap text-sm leading-relaxed">
+            <div className="bg-slate-50 p-4 rounded-xl text-sm leading-relaxed">
               {loadingAI ? (
                 <div className="flex items-center justify-center py-6">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
                 </div>
               ) : (
-                response
+                <div
+                  className="prose prose-slate max-w-none text-sm leading-relaxed
+                    prose-headings:font-semibold prose-p:my-3 prose-li:my-1
+                    prose-pre:my-0"
+                >
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm, remarkBreaks]}
+                    components={markdownComponents}
+                  >
+                    {response}
+                  </ReactMarkdown>
+                </div>
               )}
             </div>
           </div>
