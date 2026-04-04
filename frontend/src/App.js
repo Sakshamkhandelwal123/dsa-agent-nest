@@ -1,17 +1,72 @@
-import React, { useState, useEffect } from "react";
+import React, { useCallback, useEffect, useState, useRef } from "react";
 
-function App() {
+export default function App() {
   const [question, setQuestion] = useState("");
   const [response, setResponse] = useState("");
   const [suggestion, setSuggestion] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [loadingAI, setLoadingAI] = useState(false);
+  const [loadingSuggestion, setLoadingSuggestion] = useState(false);
   const [leetcode, setLeetcode] = useState(null);
-  const [leetcodeLoading, setLeetcodeLoading] = useState(false);
+  const [recent, setRecent] = useState([]);
+  const responseRef = useRef(null);
 
   const API_BASE = "/api";
+  const leetcodeUserQuery = process.env.REACT_APP_LEETCODE_USERNAME
+    ? `?username=${encodeURIComponent(process.env.REACT_APP_LEETCODE_USERNAME)}`
+    : "";
+
+  const fetchLeetcode = useCallback(async () => {
+    try {
+      const res = await fetch(
+        `${API_BASE}/leetcode/stats${leetcodeUserQuery}`
+      );
+      const data = await res.json();
+      if (!res.ok) {
+        console.error(data?.message ?? "Failed to load LeetCode stats");
+        return;
+      }
+      if (data && typeof data.totalSolved === "number") {
+        setLeetcode(data);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  }, [leetcodeUserQuery]);
+
+  const fetchRecent = useCallback(async () => {
+    try {
+      const res = await fetch(
+        `${API_BASE}/leetcode/recent${leetcodeUserQuery}`
+      );
+      const data = await res.json();
+      if (!res.ok) {
+        console.error(data?.message ?? "Failed to load recent submissions");
+        setRecent([]);
+        return;
+      }
+      setRecent(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error(err);
+      setRecent([]);
+    }
+  }, [leetcodeUserQuery]);
+
+  useEffect(() => {
+    fetchLeetcode();
+    fetchRecent();
+  }, [fetchLeetcode, fetchRecent]);
+
+  useEffect(() => {
+    if ((response || loadingAI) && responseRef.current) {
+      responseRef.current.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }
+  }, [response, loadingAI]);
 
   const getSuggestion = async () => {
-    setLoading(true);
+    setLoadingSuggestion(true);
     try {
       const res = await fetch(`${API_BASE}/agent/suggest`);
       const data = await res.json();
@@ -19,24 +74,13 @@ function App() {
     } catch (err) {
       console.error(err);
     }
-    setLoading(false);
-  };
-
-  const fetchLeetcode = async () => {
-    setLeetcodeLoading(true);
-    try {
-      const res = await fetch(`${API_BASE}/leetcode/stats`);
-      const data = await res.json();
-      setLeetcode(data);
-    } catch (err) {
-      console.error(err);
-    }
-    setLeetcodeLoading(false);
+    setLoadingSuggestion(false);
   };
 
   const askAgent = async () => {
     if (!question) return;
-    setLoading(true);
+    setLoadingAI(true);
+    setResponse("");
     try {
       const res = await fetch(
         `${API_BASE}/agent/ask?q=${encodeURIComponent(question)}`
@@ -46,16 +90,12 @@ function App() {
     } catch (err) {
       console.error(err);
     }
-    setLoading(false);
+    setLoadingAI(false);
   };
-
-  useEffect(() => {
-    fetchLeetcode();
-  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-200 p-8">
-      <div className="max-w-5xl mx-auto">
+      <div className="max-w-6xl mx-auto">
 
         {/* Header */}
         <div className="mb-8">
@@ -67,101 +107,95 @@ function App() {
           </p>
         </div>
 
-        {/* Leetcode Card */}
-        <div className="bg-white rounded-2xl shadow-lg p-6 border border-slate-100 mb-6">
+        {/* Leetcode Stats */}
+        {leetcode && (
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
 
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold">
-              📊 Leetcode Progress
+            <div className="bg-white rounded-xl shadow p-4">
+              <div className="text-sm text-slate-500">Total</div>
+              <div className="text-2xl font-bold">
+                {leetcode.totalSolved}
+              </div>
+            </div>
+
+            <div className="bg-green-50 rounded-xl shadow p-4">
+              <div className="text-sm text-green-600">Easy</div>
+              <div className="text-2xl font-bold text-green-600">
+                {leetcode.easySolved}
+              </div>
+            </div>
+
+            <div className="bg-yellow-50 rounded-xl shadow p-4">
+              <div className="text-sm text-yellow-600">Medium</div>
+              <div className="text-2xl font-bold text-yellow-600">
+                {leetcode.mediumSolved}
+              </div>
+            </div>
+
+            <div className="bg-red-50 rounded-xl shadow p-4">
+              <div className="text-sm text-red-600">Hard</div>
+              <div className="text-2xl font-bold text-red-600">
+                {leetcode.hardSolved}
+              </div>
+            </div>
+
+            <div className="bg-blue-50 rounded-xl shadow p-4">
+              <div className="text-sm text-blue-600">Ranking</div>
+              <div className="text-xl font-bold text-blue-600">
+                {leetcode.ranking?.toLocaleString()}
+              </div>
+            </div>
+
+          </div>
+        )}
+
+        {/* Main Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+          {/* Recent Solved */}
+          <div className="bg-white rounded-2xl shadow-lg p-6 border border-slate-100">
+            <h2 className="text-xl font-semibold mb-4">
+              🔥 Recent Solved
             </h2>
 
-            <button
-              onClick={fetchLeetcode}
-              className="text-sm bg-slate-100 hover:bg-slate-200 px-3 py-1 rounded-lg"
-            >
-              Refresh
-            </button>
+            <div className="space-y-2">
+              {recent.slice(0, 6).map((item, index) => (
+                <a
+                  key={index}
+                  href={`https://leetcode.com/problems/${item.titleSlug}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="block bg-slate-50 hover:bg-slate-100 p-3 rounded-lg transition"
+                >
+                  {item.title}
+                </a>
+              ))}
+            </div>
           </div>
 
-          {leetcodeLoading && (
-            <div className="text-slate-500">
-              Loading Leetcode stats...
-            </div>
-          )}
-
-          {leetcode && (
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-
-              <div className="bg-slate-50 rounded-xl p-4">
-                <div className="text-sm text-slate-500">
-                  Total
-                </div>
-                <div className="text-2xl font-bold">
-                  {leetcode.totalSolved}
-                </div>
-              </div>
-
-              <div className="bg-green-50 rounded-xl p-4">
-                <div className="text-sm text-green-600">
-                  Easy
-                </div>
-                <div className="text-2xl font-bold text-green-600">
-                  {leetcode.easySolved}
-                </div>
-              </div>
-
-              <div className="bg-yellow-50 rounded-xl p-4">
-                <div className="text-sm text-yellow-600">
-                  Medium
-                </div>
-                <div className="text-2xl font-bold text-yellow-600">
-                  {leetcode.mediumSolved}
-                </div>
-              </div>
-
-              <div className="bg-red-50 rounded-xl p-4">
-                <div className="text-sm text-red-600">
-                  Hard
-                </div>
-                <div className="text-2xl font-bold text-red-600">
-                  {leetcode.hardSolved}
-                </div>
-              </div>
-
-              <div className="bg-blue-50 rounded-xl p-4">
-                <div className="text-sm text-blue-600">
-                  Ranking
-                </div>
-                <div className="text-lg font-bold text-blue-600">
-                  {leetcode.ranking}
-                </div>
-              </div>
-
-            </div>
-          )}
-
-        </div>
-
-        {/* Grid Layout */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-          {/* Suggestion Card */}
+          {/* Suggestion */}
           <div className="bg-white rounded-2xl shadow-lg p-6 border border-slate-100">
-            <div className="flex items-center justify-between mb-4">
+            <div className="text-center mb-4">
               <h2 className="text-xl font-semibold">
-                🎯 Today's Question
+                🎯 Suggested
               </h2>
-
-              <button
-                onClick={getSuggestion}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl transition"
-              >
-                Suggest
-              </button>
             </div>
 
-            {loading && (
-              <p className="text-slate-500">Finding best question...</p>
+            {!suggestion && (
+              <div className="flex flex-col items-center justify-center text-center py-8 text-slate-400">
+                <div className="text-4xl mb-2">🧠</div>
+                <p className="text-sm">
+                  Get a smart question based on your progress
+                </p>
+                <button
+                  type="button"
+                  onClick={getSuggestion}
+                  disabled={loadingSuggestion}
+                  className="mt-4 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed px-4 py-2 rounded-xl text-sm"
+                >
+                  {loadingSuggestion ? "Loading…" : "Generate Suggestion"}
+                </button>
+              </div>
             )}
 
             {suggestion && (
@@ -176,14 +210,31 @@ function App() {
                 <div className="text-sm text-slate-500 mb-1">
                   Question
                 </div>
-                <div className="text-md font-medium">
+
+                <a
+                  href={`https://leetcode.com/problems/${suggestion.question
+                    .toLowerCase()
+                    .replace(/\s+/g, "-")}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-blue-600 font-medium hover:underline"
+                >
                   {suggestion.question}
-                </div>
+                </a>
+
+                <button
+                  type="button"
+                  onClick={getSuggestion}
+                  disabled={loadingSuggestion}
+                  className="mt-4 w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white py-2 rounded-xl"
+                >
+                  {loadingSuggestion ? "Loading…" : "Suggest Another"}
+                </button>
               </div>
             )}
           </div>
 
-          {/* Ask Agent Card */}
+          {/* Ask AI */}
           <div className="bg-white rounded-2xl shadow-lg p-6 border border-slate-100">
             <h2 className="text-xl font-semibold mb-4">
               🤖 Ask AI Coach
@@ -207,15 +258,23 @@ function App() {
 
         </div>
 
-        {/* Response Section */}
-        {response && (
-          <div className="mt-6 bg-white rounded-2xl shadow-lg p-6 border border-slate-100">
+        {(loadingAI || response) && (
+          <div
+            ref={responseRef}
+            className="mt-6 bg-white rounded-2xl shadow-lg p-6 border border-slate-100"
+          >
             <h2 className="text-xl font-semibold mb-4">
               🧠 AI Response
             </h2>
 
             <div className="bg-slate-50 p-4 rounded-xl whitespace-pre-wrap text-sm leading-relaxed">
-              {response}
+              {loadingAI ? (
+                <div className="flex items-center justify-center py-6">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                </div>
+              ) : (
+                response
+              )}
             </div>
           </div>
         )}
@@ -224,5 +283,3 @@ function App() {
     </div>
   );
 }
-
-export default App;

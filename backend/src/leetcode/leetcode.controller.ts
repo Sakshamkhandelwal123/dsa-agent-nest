@@ -8,9 +8,22 @@ export class LeetcodeController {
   @Get('stats')
   async getStats(@Query('username') username?: string) {
     const u = username?.trim() || process.env.LEETCODE_USERNAME;
+    
     if (!u) {
       throw new BadRequestException('Query parameter "username" is required');
     }
+    
     return this.leetcodeService.getUserStats(u);
+  }
+
+  @Get("recent")
+  async getRecent(@Query('username') username?: string) {
+    const u = username?.trim() || process.env.LEETCODE_USERNAME;
+    
+    if (!u) {
+      throw new BadRequestException('Query parameter "username" is required');
+    }
+
+    return this.leetcodeService.getRecentSubmissions(u);
   }
 }
