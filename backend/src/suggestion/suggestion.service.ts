@@ -1,25 +1,67 @@
 import { Injectable } from '@nestjs/common';
-import { A2Z_DATA } from '../a2z/a2z.data';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import { A2Z } from '../a2z/a2z.schema';
 
 @Injectable()
 export class SuggestionService {
 
-  suggestRandom() {
+  constructor(
+    @InjectModel(A2Z.name)
+    private a2zModel: Model<A2Z>
+  ) { }
 
-    const topics = Object.keys(A2Z_DATA);
+  async suggestRandom() {
 
-    const topic =
-      topics[Math.floor(Math.random() * topics.length)];
+    const count =
+      await this.a2zModel.countDocuments();
 
-    const questions = A2Z_DATA[topic];
+    const random =
+      Math.floor(Math.random() * count);
 
     const question =
+      await this.a2zModel
+        .findOne()
+        .skip(random);
+
+    return {
+      topic: question?.subcategory,
+      question: question?.problemName,
+      difficulty: question?.difficulty,
+      leetcode: question?.leetcode
+    };
+
+  }
+
+  async suggestFromInsights(insights: any) {
+
+    const topic =
+      insights?.mostAsked ||
+      insights?.recentFocus?.[0];
+
+    if (!topic) {
+      return this.suggestRandom();
+    }
+
+    const questions =
+      await this.a2zModel.find({
+        subcategory: topic
+      });
+
+    if (!questions.length) {
+      return this.suggestRandom();
+    }
+
+    const random =
       questions[Math.floor(Math.random() * questions.length)];
 
     return {
-      topic,
-      question
+      topic: random.subcategory,
+      question: random.problemName,
+      difficulty: random.difficulty,
+      leetcode: random.leetcode
     };
+
   }
 
 }

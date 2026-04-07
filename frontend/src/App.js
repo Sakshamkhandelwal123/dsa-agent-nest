@@ -31,11 +31,10 @@ function createMarkdownComponents(isDark) {
     pre({ children, ...props }) {
       return (
         <pre
-          className={`my-4 overflow-x-auto rounded-lg px-6 py-4 text-sm leading-relaxed shadow-inner ${
-            isDark
+          className={`my-4 overflow-x-auto rounded-lg px-6 py-4 text-sm leading-relaxed shadow-inner ${isDark
               ? "!bg-slate-950 !text-slate-100"
               : "!bg-slate-900 !text-slate-100"
-          }`}
+            }`}
           style={{ tabSize: 4 }}
           {...props}
         >
@@ -52,11 +51,10 @@ function createMarkdownComponents(isDark) {
       if (!isBlock) {
         return (
           <code
-            className={`rounded px-1.5 py-0.5 font-mono text-[0.9em] ${
-              isDark
+            className={`rounded px-1.5 py-0.5 font-mono text-[0.9em] ${isDark
                 ? "bg-slate-700/80 text-slate-100"
                 : "bg-slate-200/90 text-slate-800"
-            }`}
+              }`}
             {...props}
           >
             {children}
@@ -91,6 +89,7 @@ export default function App() {
   const [loadingSuggestion, setLoadingSuggestion] = useState(false);
   const [leetcode, setLeetcode] = useState(null);
   const [recent, setRecent] = useState([]);
+  const [insights, setInsights] = useState(null);
   const responseRef = useRef(null);
   const markdownComponents = createMarkdownComponents(isDark);
 
@@ -99,6 +98,7 @@ export default function App() {
   useEffect(() => {
     fetchLeetcode();
     fetchRecent();
+    fetchInsights();
   }, []);
 
   useEffect(() => {
@@ -119,6 +119,16 @@ export default function App() {
       const res = await fetch(`${API_BASE}/leetcode/stats`);
       const data = await res.json();
       setLeetcode(data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const fetchInsights = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/agent/insights`);
+      const data = await res.json();
+      setInsights(data);
     } catch (err) {
       console.error(err);
     }
@@ -162,34 +172,45 @@ export default function App() {
     setLoadingAI(false);
   };
 
+  const suggestionQuestionText =
+    typeof suggestion?.question === "string" ? suggestion.question : "";
+  const suggestionLink =
+    typeof suggestion?.link === "string" ? suggestion.link : "";
+  const suggestionTitleSlug =
+    typeof suggestion?.titleSlug === "string" ? suggestion.titleSlug : "";
+  const suggestionSlug =
+    suggestionTitleSlug ||
+    suggestionQuestionText.toLowerCase().replace(/\s+/g, "-");
+  const suggestionHref = suggestionLink || (
+    suggestionSlug ? `https://leetcode.com/problems/${suggestionSlug}` : ""
+  );
+
   return (
     <div
-      className={`min-h-screen p-8 transition-colors ${
-        isDark
+      className={`min-h-screen p-8 transition-colors ${isDark
           ? "bg-gradient-to-br from-slate-950 to-slate-900 text-slate-100"
           : "bg-gradient-to-br from-slate-50 to-slate-200 text-slate-900"
-      }`}
+        }`}
     >
       <div className="max-w-6xl mx-auto">
 
         {/* Header */}
         <div className="mb-8 flex items-start justify-between gap-4">
           <div>
-          <h1 className={`text-4xl font-bold ${isDark ? "text-slate-100" : "text-slate-800"}`}>
-            🚀 DSA AI Agent
-          </h1>
-          <p className={`mt-2 ${isDark ? "text-slate-300" : "text-slate-600"}`}>
-            Your Personal Leetcode + Striver A2Z Coach
-          </p>
+            <h1 className={`text-4xl font-bold ${isDark ? "text-slate-100" : "text-slate-800"}`}>
+              🚀 DSA AI Agent
+            </h1>
+            <p className={`mt-2 ${isDark ? "text-slate-300" : "text-slate-600"}`}>
+              Your Personal Leetcode + Striver A2Z Coach
+            </p>
           </div>
           <button
             type="button"
             onClick={() => setIsDark((prev) => !prev)}
-            className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
-              isDark
+            className={`rounded-xl px-4 py-2 text-sm font-medium transition ${isDark
                 ? "bg-slate-800 text-slate-100 hover:bg-slate-700"
                 : "bg-white text-slate-700 hover:bg-slate-100"
-            }`}
+              }`}
           >
             {isDark ? "Light Mode" : "Dark Mode"}
           </button>
@@ -237,6 +258,91 @@ export default function App() {
           </div>
         )}
 
+        {/* Learning Insights */}
+        {insights && (
+          <div
+            className={`rounded-2xl shadow-lg p-6 border mb-6 ${isDark
+                ? "bg-slate-800/80 border-slate-700"
+                : "bg-white border-slate-100"
+              }`}
+          >
+            <h2 className="text-xl font-semibold mb-4">
+              🧠 Learning Insights
+            </h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+              {/* Most Asked */}
+              <div>
+                <div className={`text-sm mb-1 ${isDark ? "text-slate-400" : "text-slate-500"
+                  }`}>
+                  Most Asked
+                </div>
+
+                <div className="text-lg font-semibold capitalize">
+                  {insights.mostAsked || "-"}
+                </div>
+              </div>
+
+              {/* Recent Focus */}
+              <div>
+                <div className={`text-sm mb-2 ${isDark ? "text-slate-400" : "text-slate-500"
+                  }`}>
+                  Recent Focus
+                </div>
+
+                <div className="space-y-1">
+                  {insights.recentFocus?.map((topic, i) => (
+                    <div
+                      key={i}
+                      className={`px-2 py-1 rounded-lg text-sm capitalize ${isDark
+                          ? "bg-slate-700"
+                          : "bg-slate-100"
+                        }`}
+                    >
+                      {topic}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Difficulty */}
+              <div>
+                <div className={`text-sm mb-2 ${isDark ? "text-slate-400" : "text-slate-500"
+                  }`}>
+                  Difficulty
+                </div>
+
+                <div className="space-y-1 text-sm">
+
+                  <div className="flex justify-between">
+                    <span>Easy</span>
+                    <span className="font-semibold text-green-500">
+                      {insights.difficultyBreakdown?.easy || 0}
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between">
+                    <span>Medium</span>
+                    <span className="font-semibold text-yellow-500">
+                      {insights.difficultyBreakdown?.medium || 0}
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between">
+                    <span>Hard</span>
+                    <span className="font-semibold text-red-500">
+                      {insights.difficultyBreakdown?.hard || 0}
+                    </span>
+                  </div>
+
+                </div>
+              </div>
+
+            </div>
+          </div>
+        )}
+
         {/* Main Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
@@ -253,11 +359,10 @@ export default function App() {
                   href={`https://leetcode.com/problems/${item.titleSlug}`}
                   target="_blank"
                   rel="noreferrer"
-                  className={`block p-3 rounded-lg transition ${
-                    isDark
+                  className={`block p-3 rounded-lg transition ${isDark
                       ? "bg-slate-700/70 hover:bg-slate-700 text-slate-100"
                       : "bg-slate-50 hover:bg-slate-100 text-slate-800"
-                  }`}
+                    }`}
                 >
                   {item.title}
                 </a>
@@ -283,9 +388,8 @@ export default function App() {
                   type="button"
                   onClick={getSuggestion}
                   disabled={loadingSuggestion}
-                  className={`mt-4 disabled:opacity-50 disabled:cursor-not-allowed px-4 py-2 rounded-xl text-sm ${
-                    isDark ? "bg-slate-700 hover:bg-slate-600 text-slate-100" : "bg-slate-100 hover:bg-slate-200"
-                  }`}
+                  className={`mt-4 disabled:opacity-50 disabled:cursor-not-allowed px-4 py-2 rounded-xl text-sm ${isDark ? "bg-slate-700 hover:bg-slate-600 text-slate-100" : "bg-slate-100 hover:bg-slate-200"
+                    }`}
                 >
                   {loadingSuggestion ? "Loading…" : "Generate Suggestion"}
                 </button>
@@ -305,16 +409,20 @@ export default function App() {
                   Question
                 </div>
 
-                <a
-                  href={`https://leetcode.com/problems/${suggestion.question
-                    .toLowerCase()
-                    .replace(/\s+/g, "-")}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className={`font-medium hover:underline ${isDark ? "text-blue-300" : "text-blue-600"}`}
-                >
-                  {suggestion.question}
-                </a>
+                {suggestionHref ? (
+                  <a
+                    href={suggestionHref}
+                    target="_blank"
+                    rel="noreferrer"
+                    className={`font-medium hover:underline ${isDark ? "text-blue-300" : "text-blue-600"}`}
+                  >
+                    {suggestionQuestionText || "Open problem"}
+                  </a>
+                ) : (
+                  <div className={`font-medium ${isDark ? "text-slate-200" : "text-slate-700"}`}>
+                    {suggestionQuestionText || "Problem link unavailable"}
+                  </div>
+                )}
 
                 <button
                   type="button"
@@ -337,11 +445,10 @@ export default function App() {
             <input
               type="text"
               placeholder="Ask about any DSA problem..."
-              className={`w-full rounded-xl p-3 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                isDark
+              className={`w-full rounded-xl p-3 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500 ${isDark
                   ? "border border-slate-600 bg-slate-700 text-slate-100 placeholder:text-slate-400"
                   : "border border-slate-200"
-              }`}
+                }`}
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
             />
