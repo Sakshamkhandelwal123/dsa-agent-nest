@@ -1,8 +1,23 @@
 import fs from "fs";
 import mongoose from "mongoose";
+import dotenv from "dotenv";
+import { resolve } from "path";
+
+const envPaths = [
+  resolve(process.cwd(), "..", ".env"),
+  resolve(process.cwd(), ".env"),
+];
+
+for (const envPath of envPaths) {
+  if (fs.existsSync(envPath)) {
+    dotenv.config({ path: envPath, override: false });
+  }
+}
 
 const MONGO_URI =
   process.env.MONGO_URI || "mongodb://localhost:27017/dsa-agent";
+
+  console.log(MONGO_URI)
 
 const file = fs.readFileSync(
   "src/scripts/strivers-a2z-sheet-learn-dsa-a-to-z.html",
