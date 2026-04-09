@@ -25,7 +25,7 @@ export class SuggestionService {
         .skip(random);
 
     return {
-      topic: question?.subcategory,
+      topic: question?.category,
       question: question?.problemName,
       difficulty: question?.difficulty,
       leetcode: question?.leetcode
@@ -45,7 +45,7 @@ export class SuggestionService {
 
     const questions =
       await this.a2zModel.find({
-        subcategory: topic
+        category: topic
       });
 
     if (!questions.length) {
@@ -56,7 +56,7 @@ export class SuggestionService {
       questions[Math.floor(Math.random() * questions.length)];
 
     return {
-      topic: random.subcategory,
+      topic: random.category,
       question: random.problemName,
       difficulty: random.difficulty,
       leetcode: random.leetcode

@@ -68,6 +68,13 @@ export class LeetcodeService {
       }
     );
   
-    return response.data.data.recentSubmissionList;
+    const submissions = response.data.data.recentSubmissionList ?? [];
+
+    const seen = new Set<string>();
+    return submissions.filter((s: any) => {
+      if (seen.has(s.titleSlug)) return false;
+      seen.add(s.titleSlug);
+      return true;
+    });
   }
 }

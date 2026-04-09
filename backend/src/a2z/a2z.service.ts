@@ -35,7 +35,7 @@ export class A2zService {
         .skip(random);
 
     return {
-      topic: question?.subcategory,
+      topic: question?.category,
       question: question?.problemName,
       difficulty: question?.difficulty,
       leetcode: question?.leetcode
