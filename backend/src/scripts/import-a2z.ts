@@ -119,16 +119,23 @@ function normalizeLeetcodeUrl(url?: string): string {
   if (!clean) return "";
 
   const match = clean.match(/^https?:\/\/leetcode\.com\/problems\/[^/?#]+\/?/i);
-  return match?.[0] ?? clean;
+  return match?.[0] ?? "";
 }
 
 function normalizeAnyUrl(url?: string): string {
   const clean = cleanValue(url);
   if (!clean) return "";
 
-  if (/^https?:\/\//i.test(clean)) return clean;
-  if (clean.startsWith("/")) return `https://takeuforward.org${clean}`;
-  return "";
+  let full = "";
+  if (/^https?:\/\//i.test(clean)) full = clean;
+  else if (clean.startsWith("/")) full = `https://takeuforward.org${clean}`;
+
+  if (!full) return "";
+
+  if (/takeuforward\.org\/plus\/dsa\/problems\/(cpp|java|python)\/?$/i.test(full))
+    return "";
+
+  return full;
 }
 
 function resolveBestProblemLink(problem: any): string {

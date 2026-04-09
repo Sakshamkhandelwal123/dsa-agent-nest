@@ -174,16 +174,12 @@ export default function App() {
 
   const suggestionQuestionText =
     typeof suggestion?.question === "string" ? suggestion.question : "";
-  const suggestionLink =
-    typeof suggestion?.link === "string" ? suggestion.link : "";
-  const suggestionTitleSlug =
-    typeof suggestion?.titleSlug === "string" ? suggestion.titleSlug : "";
-  const suggestionSlug =
-    suggestionTitleSlug ||
-    suggestionQuestionText.toLowerCase().replace(/\s+/g, "-");
-  const suggestionHref = suggestionLink || (
-    suggestionSlug ? `https://leetcode.com/problems/${suggestionSlug}` : ""
-  );
+  const rawSuggestionLink =
+    typeof suggestion?.leetcode === "string" ? suggestion.leetcode : "";
+  const isUsefulLink =
+    rawSuggestionLink &&
+    !(/takeuforward\.org\/plus\/dsa\/problems\/(cpp|java|python)\/?$/i.test(rawSuggestionLink));
+  const suggestionHref = isUsefulLink ? rawSuggestionLink : "";
 
   return (
     <div
